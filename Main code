@@ -1,0 +1,95 @@
+import snscrape.modules.twitter as sntwitter
+import pandas as pd
+import re
+from textblob import TextBlob
+from wordcloud import WordCloud
+
+attributes_container= []
+for i,tweet in enumerate (sntwitter.TwitterSearchScraper('from:TheSandboxGame').get_items()):
+    if i>1000: 
+        break 
+    attributes_container.append([tweet.date, tweet.likeCount, tweet.sourceLabel, tweet.content])
+    
+    
+tweets_df= pd.DataFrame(attributes_container, columns=['Date Created', 'Number of tweets', 'Source of tweets', 'tweets'])
+
+tweets_df.to_csv(r'/storage/emulated/0/Download/my_data.csv', index=False)
+
+my_data=pd.read_csv(r'/storage/emulated/0/Download/my_data.csv')
+
+#tweet cleanup
+def cleanTxt(text):
+    text=re.sub(r'@[A-Za-z0-9]+', ' ', text)
+    text=re.sub(r'#', ' ', text)
+    text=re.sub(r'RT[\s]+', ' ', text)
+    text=re.sub(r'http?:\/\/\S+', ' ', text)
+    text=re.sub(r't.me[a-zA-Z0-9]+', ' ', text)
+  
+    
+    return text
+
+my_data['tweets']=my_data['tweets']. apply(cleanTxt)
+
+def get_subjectivity(text):
+    return TextBlob(text).sentiment.subjectivity
+    
+       
+def get_polarity(text):
+    return TextBlob (text).sentiment.polarity
+    
+    
+my_data['subjectivity']= my_data['tweets'].apply(get_subjectivity)
+
+my_data['polarity']= my_data['tweets'].apply(get_polarity)
+
+allWords=' '.join([twts for twts in my_data['tweets']])
+
+wordCloud=WordCloud(width=500, height=300, max_font_size=110, random_state=21).generate(allWords)
+
+
+def get_analysis(score):
+    if score>0:
+        return 'positive'
+    elif score <0:
+        return 'negative'
+    else:
+        return 'neutral'
+
+my_data['score']=my_data['polarity'].apply(get_analysis)
+
+plt.figure(figsize=(8,6))
+for i in range (0, my_data.shape[0]):
+    plt.scatter(my_data['polarity'][i], my_data['subjectivity'][i], color='Blue')
+    
+plt.title('sentiment analysis')
+plt.xlabel('polarity')
+plt.ylabel('subjectivity')
+
+plt.show()
+
+ptweets=my_data[my_data.score=='positive']
+ptweets=ptweets['tweets']
+round(  (ptweets.shape[0]/my_data.shape[0])*100, 1)
+print (ptweets)
+
+ntweets=my_data[my_data.score=='negative']
+ntweets=ntweets['tweets']
+round(  (ntweets.shape[0]/my_data.shape[0])*100, 1)
+print(ntweets)
+
+my_data['score'].value_counts()
+plt.title('sentiment analysis')
+plt.xlabel('score')
+plt.ylabel('count')
+my_data['score'].value_counts().plot(kind='bar')
+
+if __ name__== __'main'__:
+    while True:
+        cleanTxt()
+        get_subjectivity()
+        get_polarity()
+        get_analysis()
+        
+        time_wait=10
+        print (f'waiting {time_wait} seconds..')
+        time.sleep(time_wait*60)
